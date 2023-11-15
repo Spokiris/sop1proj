@@ -24,6 +24,7 @@ run: ems
 run_jobs: ems
 	for file in jobs/*.jobs; do \
 		./ems < $$file > $${file%.jobs}.out; \
+		sed -i 's/>//g' $${file%.jobs}.out; \
 	done
 
 clean:
