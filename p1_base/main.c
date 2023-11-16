@@ -6,6 +6,7 @@
 #include "constants.h"
 #include "operations.h"
 #include "parser.h"
+#include <sched.h>
 
 int main(int argc, char *argv[]) {
   unsigned int state_access_delay_ms = STATE_ACCESS_DELAY_MS;
@@ -30,9 +31,9 @@ int main(int argc, char *argv[]) {
   if(argc == 2) {
     int MAX_PROC = atoi(argv[1]);
     int active_procs = 0;
-    pid_t children[MAX_JOBS];
+    pid_t children[MAX_PROC];
 
-    for(int i = 0; i < MAX_JOBS; i++) {
+    for(int i = 0; i < MAX_PROC; i++) {
       if (active_procs >= MAX_PROC) {
         wait(NULL);
         active_procs--;
@@ -51,7 +52,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    for(int i = 0; i<MAX_JOBS; i++) {
+    for(int i = 0; i<MAX_PROC; i++) {
       int status;
       waitpid(children[i], &status, 0);
     }
@@ -152,7 +153,7 @@ int main(int argc, char *argv[]) {
           return 0;
       }
     }
-
+  
   }
 
 }
