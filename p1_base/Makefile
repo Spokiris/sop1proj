@@ -10,7 +10,7 @@ ifneq ($(shell uname -s),Darwin) # if not MacOS
 	CFLAGS += -fmax-errors=5
 endif
 
-all: ems run_jobs
+all: ems 
 
 ems: main.c constants.h operations.o parser.o eventlist.o
 	$(CC) $(CFLAGS) $(SLEEP) -o ems main.c operations.o parser.o eventlist.o
@@ -19,13 +19,7 @@ ems: main.c constants.h operations.o parser.o eventlist.o
 	$(CC) $(CFLAGS) -c ${@:.o=.c}
 
 run: ems
-	@./ems
-
-run_jobs: ems
-	for file in jobs/*.jobs; do \
-		./ems < $$file > $${file%.jobs}.out; \
-		sed -i 's/> //g' $${file%.jobs}.out; \
-	done
+	@./ems 0 jobs 
 
 clean:
 	rm -f *.o ems
