@@ -48,7 +48,7 @@ int main(int argc, char * argv[]) {
     
     /* Third argument is the Delay */
     if (argc > 3) {
-        int MAX_PROC = atoi(argv[2]);                   // Second argument is the  MAX number of simultaneos processes
+        //int MAX_PROC = atoi(argv[2]);                   // Second argument is the  MAX number of simultaneos processes
         
         char * endptr;                                  // Pointer to the end of the string
         unsigned long int delay = strtoul(argv[3], & endptr, 10); 
@@ -148,7 +148,7 @@ int main(int argc, char * argv[]) {
                               }
 
                               snprintf(output_path, PATH_MAX, "%s/%s.out", directory_path, filename);   // Create output file path
-
+                              
                               fdout = open(output_path, O_WRONLY | O_CREAT | O_TRUNC, 0666);            // Open output file file descriptor
                               
                               if (fdout == -1) {
@@ -157,21 +157,35 @@ int main(int argc, char * argv[]) {
                               }
 
                               int stdout_save = dup(STDOUT_FILENO);   // Save standart output file descriptor
-                              dup2(fdout, STDOUT_FILENO);             // Redirect standart output to "xpto.out"
-
-                              if (ems_show(event_id)) {              // EMS_Show printed to "xpto.out"                
+                              
+                              if (stdout_save == -1) {
+                                  perror("Failed to duplicate stdout");
+                                  return 1;
+                              }
+                              
+                              if (dup2(fdout, STDOUT_FILENO) == -1) {// creates a virtual file descriptor that points to the same file as STDOUT_FILENO
+                                  perror("Failed to duplicate stdout");
+                                  return 1;
+                              }    
+                              
+                              if (ems_show(event_id)) {               // EMS_Show printed to standart output               
                                   fprintf(stderr, "Failed to show event\n");
                               }
 
-                              dup2(stdout_save, STDOUT_FILENO);       // Restore stdout file descriptor
-
+                              if(dup2(stdout_save, STDOUT_FILENO) == -1) {    // Restore standart output file descriptor to "xpto.out"
+                                  perror("Failed to duplicate stdout");
+                                  return 1;
+                              }           
+                              
+                              close(stdout_save);                     // Close standart output file descriptor
+                              
                               if (fsync(fdout) == -1) {               // Force File Sync to "xpto.out"
                                   perror("Failed to fsync");
                                   return 1;
                               }
 
-                              close(stdout_save);                     // Close standart output file descriptor
                               close(fdout);                           // Close "xpto.out" file descriptor
+                              
                               break;
 
                           case CMD_LIST_EVENTS:
