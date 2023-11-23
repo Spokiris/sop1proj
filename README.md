@@ -13,7 +13,7 @@ $$ make clean   //to clean previous program dump files including .out files
 
 $$ make run  //to Run on Jobs diriectory
 
-$$ make clean && make && make run  // to clean compile and
+$$ make clean && make && make run  // to clean compile and run
 
 $$ ./ems  //to Run
 
