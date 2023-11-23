@@ -9,8 +9,21 @@ Use the Makefile command to run the program.
 ```bash
 $$ make   //to Compile
 
+$$ make clean   //to clean previous program dump files including .out files
+
+$$ make run  //to Run on Jobs diriectory
+
+$$ make clean && make && make run  // to clean compile and
+
 $$ ./ems  //to Run
+
+$$ ./ems ./jobs  //to Run on Jobs diriectory
+
 ```
+
+## Tests
+
+Coming soon...
 
 
 ## Contributing
