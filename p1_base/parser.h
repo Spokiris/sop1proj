@@ -3,7 +3,8 @@
 
 #include <stddef.h>
 
-enum Command {
+enum Command
+{
   CMD_CREATE,
   CMD_RESERVE,
   CMD_SHOW,

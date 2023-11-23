@@ -3,7 +3,8 @@
 
 #include <stddef.h>
 
-struct Event {
+struct Event
+{
   unsigned int id;           /// Event id
   unsigned int reservations; /// Number of reservations for the event.
 
@@ -14,13 +15,15 @@ struct Event {
       *data; /// Array of size rows * cols with the reservations for each seat.
 };
 
-struct ListNode {
+struct ListNode
+{
   struct Event *event;
   struct ListNode *next;
 };
 
 // Linked list structure
-struct EventList {
+struct EventList
+{
   struct ListNode *head; // Head of the list
   struct ListNode *tail; // Tail of the list
 };
