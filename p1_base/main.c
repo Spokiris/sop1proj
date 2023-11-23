@@ -109,133 +109,128 @@ int main(int argc, char * argv[]) {
                           
                           switch (cmd) {
 
-                          case CMD_CREATE:
-                              if (parse_create(fdin, & event_id, & num_rows, & num_columns) != 0) {
-                                  fprintf(stderr, "Invalid command. See HELP for usage\n");
-                                  continue;
-                              }
+                            case CMD_CREATE:
+                                if (parse_create(fdin, & event_id, & num_rows, & num_columns) != 0) {
+                                    fprintf(stderr, "Invalid command. See HELP for usage\n");
+                                    continue;
+                                }
 
-                              if (ems_create(event_id, num_rows, num_columns)) {
-                                  fprintf(stderr, "Failed to create event\n");
-                              }
+                                if (ems_create(event_id, num_rows, num_columns)) {
+                                    fprintf(stderr, "Failed to create event\n");
+                                }
 
-                              break;
+                                break;
 
-                          case CMD_RESERVE:
-                              num_coords = parse_reserve(fdin, MAX_RESERVATION_SIZE, & event_id, xs, ys);
+                            case CMD_RESERVE:
+                                num_coords = parse_reserve(fdin, MAX_RESERVATION_SIZE, & event_id, xs, ys);
 
-                              if (num_coords == 0) {
-                                  fprintf(stderr, "Invalid command. See HELP for usage\n");
-                                  continue;
-                              }
+                                if (num_coords == 0) {
+                                    fprintf(stderr, "Invalid command. See HELP for usage\n");
+                                    continue;
+                                }
 
-                              if (ems_reserve(event_id, num_coords, xs, ys)) {
-                                  fprintf(stderr, "Failed to reserve seats\n");
-                              }
+                                if (ems_reserve(event_id, num_coords, xs, ys)) {
+                                    fprintf(stderr, "Failed to reserve seats\n");
+                                }
 
-                              break;
+                                break;
                           
                           /* FILESYS CMD_SHOW */
-                          case CMD_SHOW:
-                              if (parse_show(fdin, & event_id) != 0) {    // Parse the command    
-                                  fprintf(stderr, "Invalid command. See HELP for usage\n");
-                                  continue;
-                              }
+                            case CMD_SHOW:
+                                if (parse_show(fdin, & event_id) != 0) {    // Parse the command    
+                                    fprintf(stderr, "Invalid command. See HELP for usage\n");
+                                    continue;
+                                }
 
-                              char * dot = strrchr(filename, '.');    // Find the last dot in the filename
-                              if (dot != NULL) {
-                                  * dot = '\0';                       // Terminate the string at the dot
-                              }
+                                char * dot = strrchr(filename, '.');    // Find the last dot in the filename
+                                if (dot != NULL) {
+                                    * dot = '\0';                       // Terminate the string at the dot
+                                }
 
-                              snprintf(output_path, PATH_MAX, "%s/%s.out", directory_path, filename);   // Create output file path
-                              
-                              fdout = open(output_path, O_WRONLY | O_CREAT | O_TRUNC, 0666);            // Open output file file descriptor
-                              
-                              if (fdout == -1) {
-                                  perror("Failed to open output file");
-                                  return 1;
-                              }
+                                snprintf(output_path, PATH_MAX, "%s/%s.out", directory_path, filename);   // Create output file path
 
-                              int stdout_save = dup(STDOUT_FILENO);   // Save standart output file descriptor
-                              
-                              if (stdout_save == -1) {
-                                  perror("Failed to duplicate stdout");
-                                  return 1;
-                              }
-                              
-                              if (dup2(fdout, STDOUT_FILENO) == -1) {// creates a virtual file descriptor that points to the same file as STDOUT_FILENO
-                                  perror("Failed to duplicate stdout");
-                                  return 1;
-                              }    
-                              
-                              if (ems_show(event_id)) {               // EMS_Show printed to standart output               
-                                  fprintf(stderr, "Failed to show event\n");
-                              }
+                                fdout = open(output_path, O_WRONLY | O_CREAT | O_TRUNC, 0666);            // Open output file file descriptor
 
-                              if(dup2(stdout_save, STDOUT_FILENO) == -1) {    // Restore standart output file descriptor to "xpto.out"
-                                  perror("Failed to duplicate stdout");
-                                  return 1;
-                              }           
-                              
-                              close(stdout_save);                     // Close standart output file descriptor
-                              
-                              if (fsync(fdout) == -1) {               // Force File Sync to "xpto.out"
-                                  perror("Failed to fsync");
-                                  return 1;
-                              }
+                                if (fdout == -1) {
+                                    perror("Failed to open output file");
+                                    return 1;
+                                }
 
-                              close(fdout);                           // Close "xpto.out" file descriptor
-                              
-                              break;
+                                int stdout_save = dup(fileno(stdout));   // Save standard output file descriptor and duplicate it
 
-                          case CMD_LIST_EVENTS:
-                              if (ems_list_events()) {
-                                  fprintf(stderr, "Failed to list events\n");
-                              }
+                                if (stdout_save == -1) {
+                                    perror("Failed to duplicate stdout");
+                                    return 1;
+                                }
 
-                              break;
+                                if (dup2(fdout, fileno(stdout)) == -1) { // Redirect standard output to fdout
+                                    perror("Failed to redirect stdout");
+                                    return 1;
+                                }    
 
-                          case CMD_WAIT:
-                              if (parse_wait(fdin, & delay, NULL) == -1) { // thread_id is not implemented
-                                  fprintf(stderr, "Invalid command. See HELP for usage\n");
-                                  continue;
-                              }
+                                if (ems_show(event_id)) {               // EMS_Show printed to standard output               
+                                    fprintf(stderr, "Failed to show event\n");
+                                }
 
-                              if (delay > 0) {
-                                  printf("Waiting...\n");
-                                  ems_wait(delay);
-                              }
+                                fflush(stdout);                                  // Flush standard output
+                                
+                                if(dup2(stdout_save, fileno(stdout)) == -1) {    // Restore standard output file descriptor to its original value
+                                    perror("Failed to restore stdout");
+                                    return 1;
+                                }           
 
-                              break;
+                                
+                                int sync = fsync(fdout);                // Force File Sync to output file
+                                if (sync == -1) {                       // Force File Sync to output file
+                                    perror("Failed to fsync");
+                                    return 1;
+                                }
+                                
+                                
+                                close(stdout_save);                     // Close saved standard output file descriptor
+                                close(fdout);                           // Close output file descriptor
+                                break;
 
-                          case CMD_INVALID:
-                              fprintf(stderr, "Invalid command. See HELP for usage\n");
-                              break;
+                            case CMD_WAIT:
+                                if (parse_wait(fdin, & delay, NULL) == -1) { // thread_id is not implemented
+                                    fprintf(stderr, "Invalid command. See HELP for usage\n");
+                                    continue;
+                                }
 
-                          case CMD_HELP:
-                              printf(
-                                  "Available commands:\n"
-                                  "  CREATE <event_id> <num_rows> <num_columns>\n"
-                                  "  RESERVE <event_id> [(<x1>,<y1>) (<x2>,<y2>) ...]\n"
-                                  "  SHOW <event_id>\n"
-                                  "  LIST\n"
-                                  "  WAIT <delay_ms> [thread_id]\n" // thread_id is not implemented
-                                  "  BARRIER\n" // Not implemented
-                                  "  HELP\n");
+                                if (delay > 0) {
+                                    printf("Waiting...\n");
+                                    ems_wait(delay);
+                                }
 
-                              break;
+                                break;
 
-                          case CMD_BARRIER: // Not implemented
-                          case CMD_EMPTY:
-                              break;
+                            case CMD_INVALID:
+                                fprintf(stderr, "Invalid command. See HELP for usage\n");
+                                break;
 
-                          case EOC:
-                              ems_terminate();
-                              return 0;
-                          }
+                            case CMD_HELP:
+                                printf(
+                                    "Available commands:\n"
+                                    "  CREATE <event_id> <num_rows> <num_columns>\n"
+                                    "  RESERVE <event_id> [(<x1>,<y1>) (<x2>,<y2>) ...]\n"
+                                    "  SHOW <event_id>\n"
+                                    "  LIST\n"
+                                    "  WAIT <delay_ms> [thread_id]\n" // thread_id is not implemented
+                                    "  BARRIER\n" // Not implemented
+                                    "  HELP\n");
+
+                                break;
+
+                            case CMD_BARRIER: // Not implemented
+                            case CMD_EMPTY:
+                                break;
+
+                            case EOC:
+                                ems_terminate();
+                                return 0;
+                            }
 
                           
-
                       }
                   }
                   close(fdin);
