@@ -296,15 +296,17 @@ int main(int argc, char *argv[])
               }
 
               close(fdin);   // Close input file descriptor
-              exit(0);       // Exit the child process
               active_proc--; // Decrease the number of active processes
+              exit(status);       // Exit the child process
+              
             }
+
+            
             else if (pid > 0)
             { // Check if the process is a parent
-              printf("%d\n", active_proc);
               if (active_proc == MAX_PROC)
               {                                  // Check if the MAX number of simultaneos processes was reached
-                wpid = waitpid(pid, &status, 0); // Wait for the child process to finish
+                wpid = waitpid(pid, &status, WNOHANG);   // Wait for the child process to finish
                 active_proc--;                   // Decrease the number of active processes
               }
 
