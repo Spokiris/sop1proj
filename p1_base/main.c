@@ -27,18 +27,44 @@
 #define PATH_MAX 4096
 #define DT_REG 8 // Directory entry is a regular file
 
-typedef struct Node {
-      char filename[256];
-      struct Node* next;
-  } Node;
+typedef struct Node
+{
+  char filename[256];
+  struct Node *next;
+} Node;
 
-Node* addNode(Node* head, char* filename) {
-    Node* newNode = (Node*)malloc(sizeof(Node));
-    strcpy(newNode->filename, filename);
-    newNode->next = head;
-    return newNode;
+void addNode(Node *head, char *filename)
+{
+  Node *newNode = (Node *)malloc(sizeof(Node));
+  strcpy(newNode->filename, filename);
+  newNode->next = NULL;
+
+  if (head == NULL)
+  {
+    head = newNode;
+    return;
+  }
+
+  Node *temp = head;
+  while (temp->next != NULL)
+  {
+    temp = temp->next;
+  }
+
+  temp->next = newNode;
+  return;
 }
 
+void freeList(Node *head)
+{
+  Node *temp = head;
+  while (temp != NULL)
+  {
+    temp = temp->next;
+    free(head);
+    head = temp;
+  }
+}
 
 int main(int argc, char *argv[])
 {
@@ -50,7 +76,7 @@ int main(int argc, char *argv[])
   DIR *dir;                   // Directory stream
   struct dirent *entry;       // Directory entry
   const char *directory_path; // Directory path
-  Node* head = NULL;          // Linked list head
+  Node *head = NULL;          // Linked list head
 
   int MAX_PROC = 0; // MAX number of simultaneos processes
   int active_proc;  // Number of active processes
@@ -58,7 +84,6 @@ int main(int argc, char *argv[])
   pid_t wpid;       // Wait Process ID
   int status;       // Process status
 
-  
   /* First argument is a FilePath */
   if (argc > 1)
   {
@@ -124,31 +149,31 @@ int main(int argc, char *argv[])
     /* File loop only available w/args */
     if (argc > 1)
     {
-     
+
       /* Read files in directory */
       while ((entry = readdir(dir)) != NULL)
       {
-        head = addNode(head, entry->d_name);    // Add filename to linked list
+        addNode(head, entry->d_name); // Add filename to linked list
       }
       closedir(dir); // Close directory stream
-      
+
       /*PID LOCK*/
-      if (active_proc == MAX_PROC)  // Check if the MAX number of simultaneos processes was reached
-      {                 
-        wait(NULL);     // Wait for a process to finish
-        active_proc--;  // Decrease the number of active processes
-      }
-      
-      /*PID INIT*/
-      pid = fork();     // Create a new process
-      
-      /*PID CHECK*/
-      if (pid == 0)     // Check if the process is a child
-      { 
-    
-      Node* temp = head;
-      while (temp != NULL)
+      if (active_proc == MAX_PROC) // Check if the MAX number of simultaneos processes was reached
       {
+        wait(NULL);    // Wait for a process to finish
+        active_proc--; // Decrease the number of active processes
+      }
+
+      /*PID INIT*/
+      pid = fork(); // Create a new process
+
+      /*PID CHECK*/
+      if (pid == 0) // Check if the process is a child
+      {
+
+        Node *temp = head;
+        while (temp != NULL)
+        {
           const char *filename = temp->filename; // Get filename from linked list
 
           if (strstr(filename, ".jobs") != NULL)
@@ -194,7 +219,7 @@ int main(int argc, char *argv[])
 
               case CMD_RESERVE:
                 num_coords = parse_reserve(fdin, MAX_RESERVATION_SIZE,
-                                            &event_id, xs, ys);
+                                           &event_id, xs, ys);
 
                 if (num_coords == 0)
                 {
@@ -224,10 +249,10 @@ int main(int argc, char *argv[])
                 }
 
                 snprintf(output_path, PATH_MAX, "%s/%s.out", directory_path,
-                          filename); // Create output file path
+                         filename); // Create output file path
 
                 fdout = open(output_path, O_WRONLY | O_CREAT | O_TRUNC,
-                              0666); // Open output file file descriptor
+                             0666); // Open output file file descriptor
 
                 if (fdout == -1)
                 {
@@ -298,14 +323,14 @@ int main(int argc, char *argv[])
 
               case CMD_HELP:
                 printf("Available commands:\n"
-                        "  CREATE <event_id> <num_rows> <num_columns>\n"
-                        "  RESERVE <event_id> [(<x1>,<y1>) (<x2>,<y2>) ...]\n"
-                        "  SHOW <event_id>\n"
-                        "  LIST\n"
-                        "  WAIT <delay_ms> [thread_id]\n" // thread_id is not
-                                                          // implemented
-                        "  BARRIER\n"                     // Not implemented
-                        "  HELP\n");
+                       "  CREATE <event_id> <num_rows> <num_columns>\n"
+                       "  RESERVE <event_id> [(<x1>,<y1>) (<x2>,<y2>) ...]\n"
+                       "  SHOW <event_id>\n"
+                       "  LIST\n"
+                       "  WAIT <delay_ms> [thread_id]\n" // thread_id is not
+                                                         // implemented
+                       "  BARRIER\n"                     // Not implemented
+                       "  HELP\n");
 
                 break;
 
@@ -320,54 +345,47 @@ int main(int argc, char *argv[])
               }
             }
 
-              close(fdin);   // Close input file descriptor
-              
-              active_proc--; // Decrease the number of active processes
-            }
-            else if (pid > 0)
-            { // Check if the process is a parent
+            close(fdin); // Close input file descriptor
 
-              active_proc++; // Increase the number of active processes
-              printf("active process: %d\n", active_proc);
-              wpid = waitpid(pid, &status, 0); // Wait for the child process to finish
-              if (wpid > 0)
-              {
+            active_proc--; // Decrease the number of active processes
+          }
+          else if (pid > 0)
+          { // Check if the process is a parent
 
-                if (WIFEXITED(status))
-                { // Check if the child process exited normally
-
-                  printf("Child process %d exited with status %d\n", wpid, WEXITSTATUS(status));
-                }
-                else if (WIFSIGNALED(status))
-                { // Check if the child process was terminated by a signal
-
-                  printf("Child process %d was terminated by signal %d\n", wpid, WTERMSIG(status));
-                }
-              }
-              else if (wpid == -1)
-              {
-                perror("waitpid"); // Error while waiting for child process
-              }
-            }
-            else
+            active_proc++; // Increase the number of active processes
+            printf("active process: %d\n", active_proc);
+            wpid = waitpid(pid, &status, 0); // Wait for the child process to finish
+            if (wpid > 0)
             {
-              perror("Fork failed"); // Fork failed
-              return 1;
+
+              if (WIFEXITED(status))
+              { // Check if the child process exited normally
+
+                printf("Child process %d exited with status %d\n", wpid, WEXITSTATUS(status));
+              }
+              else if (WIFSIGNALED(status))
+              { // Check if the child process was terminated by a signal
+
+                printf("Child process %d was terminated by signal %d\n", wpid, WTERMSIG(status));
+              }
             }
+            else if (wpid == -1)
+            {
+              perror("waitpid"); // Error while waiting for child process
+            }
+          }
+          else
+          {
+            perror("Fork failed"); // Fork failed
+            return 1;
+          }
           temp = temp->next;
         }
-        temp = head;
-        
-        while (temp != NULL) {      // Free the linked list
-          Node* next = temp->next;
-          free(temp);
-          temp = next;
-        }
-        head = NULL;   // Set the head to NULL
-        
-        exit(0);       // Exit the child process
+        // free linked list
+        freeList(head);
+
+        exit(0); // Exit the child process
       }
-      
 
       while (active_proc > 0)
       { // Wait for all child processes to finish CHECK POINT
@@ -375,8 +393,7 @@ int main(int argc, char *argv[])
         active_proc--;
       }
 
-      
-      return 0;      // Exit the program
+      return 0; // Exit the program
     }
 
     /* Interactive terminal loop (maybe FIXME?) */
