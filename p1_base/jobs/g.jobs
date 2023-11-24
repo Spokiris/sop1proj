@@ -1,0 +1,3 @@
+CREATE 8 5 5
+RESERVE 8 [(1,1) (10,10)]
+SHOW 8
