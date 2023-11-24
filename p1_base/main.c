@@ -135,15 +135,9 @@ int main(int argc, char *argv[])
               return 1;
             }
 
-            /*PID LOCK*/
-            if (active_proc == MAX_PROC)
-            {                // Check if the MAX number of simultaneos processes was reached
-              wait(NULL);    // Wait for a process to finish
-              active_proc--; // Decrease the number of active processes
-            }
-
             /*PID INIT*/
-            pid = fork(); // Create a new process
+            active_proc++; // Increase the number of active processes
+            pid = fork();  // Create a new process
 
             /*PID CHECK*/
             if (pid == 0)
@@ -307,28 +301,27 @@ int main(int argc, char *argv[])
             }
             else if (pid > 0)
             { // Check if the process is a parent
-
-              active_proc++; // Increase the number of active processes
-
-              wpid = waitpid(pid, &status, 0); // Wait for the child process to finish
-              if (wpid > 0)
-              {
-
-                if (WIFEXITED(status))
-                { // Check if the child process exited normally
-
-                  printf("Child process %d exited with status %d\n", wpid, WEXITSTATUS(status));
-                }
-                else if (WIFSIGNALED(status))
-                { // Check if the child process was terminated by a signal
-
-                  printf("Child process %d was terminated by signal %d\n", wpid, WTERMSIG(status));
-                }
+              printf("%d\n", active_proc);
+              if (active_proc == MAX_PROC)
+              {                                  // Check if the MAX number of simultaneos processes was reached
+                wpid = waitpid(pid, &status, 0); // Wait for the child process to finish
+                active_proc--;                   // Decrease the number of active processes
               }
-              else if (wpid == -1)
-              {
-                perror("waitpid"); // Error while waiting for child process
+
+              if (WIFEXITED(status))
+              { // Check if the child process exited normally
+
+                printf("Child process %d exited with status %d\n", wpid, WEXITSTATUS(status));
               }
+              else if (WIFSIGNALED(status))
+              { // Check if the child process was terminated by a signal
+
+                printf("Child process %d was terminated by signal %d\n", wpid, WTERMSIG(status));
+              }
+            }
+            else if (wpid == -1)
+            {
+              perror("waitpid"); // Error while waiting for child process
             }
             else
             {
