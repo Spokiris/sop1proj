@@ -301,7 +301,7 @@ int main(int argc, char *argv[])
                 }
               }
 
-              close(fdin); // Close input file descriptor
+              close(fdin);   // Close input file descriptor
               exit(0);       // Exit the child process
               active_proc--; // Decrease the number of active processes
             }
