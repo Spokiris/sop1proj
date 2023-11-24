@@ -43,6 +43,7 @@ int main(int argc, char *argv[])
   pid_t pid;        // Process ID
   pid_t wpid;       // Wait Process ID
   int status;       // Process status
+  int files = 0;
 
   /* First argument is a FilePath */
   if (argc > 1)
@@ -138,6 +139,7 @@ int main(int argc, char *argv[])
             /*PID INIT*/
             active_proc++; // Increase the number of active processes
             pid = fork();  // Create a new process
+            printf("%d %d: ",pid, active_proc);
 
             /*PID CHECK*/
             if (pid == 0)
@@ -298,14 +300,18 @@ int main(int argc, char *argv[])
               close(fdin);   // Close input file descriptor
               active_proc--; // Decrease the number of active processes
               exit(status);       // Exit the child process
-              
             }
 
             
             else if (pid > 0)
             { // Check if the process is a parent
+              files++;
               if (active_proc == MAX_PROC)
               {                                  // Check if the MAX number of simultaneos processes was reached
+                wpid = waitpid(pid, &status, WNOHANG);   // Wait for the child process to finish
+                active_proc--;                   // Decrease the number of active processes
+              }
+              else if (active_proc < MAX_PROC && files > 1){
                 wpid = waitpid(pid, &status, WNOHANG);   // Wait for the child process to finish
                 active_proc--;                   // Decrease the number of active processes
               }
@@ -332,12 +338,6 @@ int main(int argc, char *argv[])
             }
           }
         }
-      }
-
-      while (active_proc > 0)
-      { // Wait for all child processes to finish CHECK POINT
-        wait(NULL);
-        active_proc--;
       }
 
       closedir(dir); // Close directory stream
