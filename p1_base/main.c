@@ -35,7 +35,8 @@ typedef struct Node
 
 void addNode(Node *head, char *filename)
 {
-  Node *newNode = (Node *)malloc(sizeof(Node));
+  Node *newNode = malloc(sizeof(struct Node));
+  
   strcpy(newNode->filename, filename);
   newNode->next = NULL;
 
@@ -76,7 +77,8 @@ int main(int argc, char *argv[])
   DIR *dir;                   // Directory stream
   struct dirent *entry;       // Directory entry
   const char *directory_path; // Directory path
-  Node *head = NULL;          // Linked list head
+  Node *head = malloc(sizeof(struct Node)); // Linked list head
+  head->next = NULL;
 
   int MAX_PROC = 0; // MAX number of simultaneos processes
   int active_proc;  // Number of active processes
