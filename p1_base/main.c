@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   struct dirent *entry;       // Directory entry
   const char *directory_path; // Directory path
 
-  int MAX_PROC;        // MAX number of simultaneos processes
+  int MAX_PROC = 0;        // MAX number of simultaneos processes
   int active_proc;              // Number of active processes
   pid_t pid;                    // Process ID
   pid_t wpid;                   // Wait Process ID
