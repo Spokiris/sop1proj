@@ -23,7 +23,15 @@ $$ ./ems ./jobs  //to Run on Jobs diriectory
 
 ## Tests
 
-Coming soon...
+Benchmarking tests 
+```bash
+$$ ./benchmark.sh                //on main directory
+or
+$$ make clean
+$$ make
+$$ time ./ems ./jobs x           // x should be an Integer 
+```
+
 
 ## Contributing
 
