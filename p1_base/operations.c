@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
+#include <string.h>
 
 #include "eventlist.h"
 
@@ -184,11 +186,14 @@ int ems_reserve(unsigned int event_id, size_t num_seats, size_t *xs,
   return 0;
 }
 
-int ems_show(unsigned int event_id)
+int ems_show(unsigned int event_id, int fd)
 {
+  char buffer[256];
+  
   if (event_list == NULL)
   {
-    fprintf(stderr, "EMS state must be initialized\n");
+    strcpy(buffer, "EMS state must be initialized\n");
+    write(fd, buffer, strlen(buffer));
     return 1;
   }
 
@@ -196,7 +201,8 @@ int ems_show(unsigned int event_id)
 
   if (event == NULL)
   {
-    fprintf(stderr, "Event not found\n");
+    strcpy(buffer, "Event not found\n");
+    write(fd, buffer, strlen(buffer));
     return 1;
   }
 
@@ -205,39 +211,45 @@ int ems_show(unsigned int event_id)
     for (size_t j = 1; j <= event->cols; j++)
     {
       unsigned int *seat = get_seat_with_delay(event, seat_index(event, i, j));
-      printf("%u", *seat);
+      sprintf(buffer, "%u", *seat);
+      write(fd, buffer, strlen(buffer));
 
       if (j < event->cols)
       {
-        printf(" ");
+        write(fd, " ", 1);
       }
     }
 
-    printf("\n");
+    write(fd, "\n", 1);
   }
 
   return 0;
 }
 
-int ems_list_events()
+int ems_list_events(int fd)
 {
+  char buffer[256];
+  
   if (event_list == NULL)
   {
-    fprintf(stderr, "EMS state must be initialized\n");
+    strcpy(buffer, "EMS state must be initialized\n");
+    write(fd, buffer, strlen(buffer));
     return 1;
   }
 
   if (event_list->head == NULL)
   {
-    printf("No events\n");
+    strcpy(buffer, "No events\n");
+    write(fd, buffer, strlen(buffer));
     return 0;
   }
 
   struct ListNode *current = event_list->head;
   while (current != NULL)
   {
-    printf("Event: ");
-    printf("%u\n", (current->event)->id);
+    strcpy(buffer, "Event: ");
+    sprintf(buffer + strlen(buffer), "%u\n", (current->event)->id);
+    write(fd, buffer, strlen(buffer));
     current = current->next;
   }
 
