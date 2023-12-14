@@ -9,7 +9,7 @@ Use the Makefile command to run the program.
 ```bash
 $$ make   //to Compile
 
-$$ make clean   //to clean previous program dump files including .out files
+$$ make clean   //to clean previous program dump files including ./jobs/*.out files
 
 $$ make run  //to Run on Jobs diriectory
 
