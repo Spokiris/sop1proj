@@ -196,7 +196,6 @@ int main(int argc, char *argv[])
 
  
   int MAX_THREADS = 0;    // MAX number of simultaneos threads
-  pthread_t threads[MAX_THREADS]; // Thread ID
 
 
   /* First argument is a FilePath */
@@ -330,6 +329,8 @@ int main(int argc, char *argv[])
             if (pid == 0)
             { // Check if the process is a child
 
+              pthread_t threads[MAX_THREADS]; // Thread ID
+              
               for(int i = 0; i < MAX_THREADS; i++)
               {
                 thread_args *args = malloc(sizeof(thread_args));
