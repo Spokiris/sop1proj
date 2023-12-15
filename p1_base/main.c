@@ -31,14 +31,14 @@
 #define PATH_MAX 4096
 #define DT_REG 8 // Directory entry is a regular file
 
-pthread_mutex_t cebola = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t tomate = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t alface = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t rucula = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t broculos = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t couve = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t espinafre = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t cebolinho = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t get_event_with_delay_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t get_seat_with_delay_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t seat_index_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t ems_create_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t ems_reserve_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t ems_show_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t ems_list_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t ems_wait_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct {
   int fdin;
@@ -278,7 +278,7 @@ int main(int argc, char *argv[])
     exit(1);
   }
 
-  pthread_mutex_init(&cebola, NULL);  // Initialize mutex lock
+  pthread_mutex_init(&get_event_with_delay_mutex, NULL);  // Initialize mutex lock
   /* Main loop */
   while (1)
   {

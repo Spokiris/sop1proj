@@ -29,11 +29,11 @@ static struct timespec delay_to_timespec(unsigned int delay_ms)
 /// @return Pointer to the event if found, NULL otherwise.
 static struct Event *get_event_with_delay(unsigned int event_id)
 {
-  pthread_mutex_lock(&cebola);
+  pthread_mutex_lock(&get_event_with_delay_mutex);
   struct timespec delay = delay_to_timespec(state_access_delay_ms);
   nanosleep(&delay, NULL); // Should not be removed
   struct Event *event = get_event(event_list, event_id);
-  pthread_mutex_unlock(&cebola);
+  pthread_mutex_unlock(&get_event_with_delay_mutex);
   return event;
 }
 
@@ -45,11 +45,11 @@ static struct Event *get_event_with_delay(unsigned int event_id)
 /// @return Pointer to the seat.
 static unsigned int *get_seat_with_delay(struct Event *event, size_t index)
 {
-  pthread_mutex_lock(&tomate);
+  pthread_mutex_lock(&get_seat_with_delay_mutex);
   struct timespec delay = delay_to_timespec(state_access_delay_ms);
   nanosleep(&delay, NULL); // Should not be removed
   unsigned int *seat = &event->data[index];
-  pthread_mutex_unlock(&tomate);
+  pthread_mutex_unlock(&get_seat_with_delay_mutex);
   return seat;
 }
 
@@ -61,9 +61,9 @@ static unsigned int *get_seat_with_delay(struct Event *event, size_t index)
 /// @return Index of the seat.
 static size_t seat_index(struct Event *event, size_t row, size_t col)
 {
-  pthread_mutex_lock(&alface);
+  pthread_mutex_lock(&seat_index_mutex);
   size_t index = (row - 1) * event->cols + col - 1;
-  pthread_mutex_unlock(&alface);
+  pthread_mutex_unlock(&seat_index_mutex);
   return index;
 }
 
@@ -85,7 +85,7 @@ int ems_init(unsigned int delay_ms)
 
 int ems_terminate()
 {
-  pthread_mutex_lock(&couve);
+  pthread_mutex_lock(&ems_show_mutex);
   if (event_list == NULL)
   {
     fprintf(stderr, "EMS state must be initialized\n");
@@ -93,15 +93,15 @@ int ems_terminate()
   }
 
   free_list(event_list);
-  pthread_mutex_unlock(&couve);
-  pthread_mutex_destroy(&couve);
+  pthread_mutex_unlock(&ems_show_mutex);
+  pthread_mutex_destroy(&ems_show_mutex);
   return 0;
 }
 
 int ems_create(unsigned int event_id, size_t num_rows, size_t num_cols)
 {
   
-  pthread_mutex_lock(&rucula);
+  pthread_mutex_lock(&ems_create_mutex);
   if (event_list == NULL)
   {
     fprintf(stderr, "EMS state must be initialized\n");
@@ -148,7 +148,7 @@ int ems_create(unsigned int event_id, size_t num_rows, size_t num_cols)
     return 1;
   }
   
-  pthread_mutex_unlock(&rucula);
+  pthread_mutex_unlock(&ems_create_mutex);
   
   return 0;
 }
@@ -156,7 +156,7 @@ int ems_create(unsigned int event_id, size_t num_rows, size_t num_cols)
 int ems_reserve(unsigned int event_id, size_t num_seats, size_t *xs,
                 size_t *ys)
 {
-  pthread_mutex_lock(&broculos);
+  pthread_mutex_lock(&ems_reserve_mutex);
   
   if (event_list == NULL)
   {
@@ -205,13 +205,13 @@ int ems_reserve(unsigned int event_id, size_t num_seats, size_t *xs,
     }
     return 1;
   }
-  pthread_mutex_unlock(&broculos);
+  pthread_mutex_unlock(&ems_reserve_mutex);
   return 0;
 }
 
 int ems_show(unsigned int event_id, int fd)
 {
-  pthread_mutex_lock(&couve);
+  pthread_mutex_lock(&ems_show_mutex);
   char buffer[256];
   
   if (event_list == NULL)
@@ -246,13 +246,13 @@ int ems_show(unsigned int event_id, int fd)
 
     write(fd, "\n", 1);
   }
-  pthread_mutex_unlock(&couve);
+  pthread_mutex_unlock(&ems_show_mutex);
   return 0;
 }
 
 int ems_list_events(int fd)
 {
-  pthread_mutex_lock(&espinafre);
+  pthread_mutex_lock(&ems_list_mutex);
   char buffer[256];
   
   if (event_list == NULL)
@@ -277,16 +277,16 @@ int ems_list_events(int fd)
     write(fd, buffer, strlen(buffer));
     current = current->next;
   }
-  pthread_mutex_unlock(&espinafre);
+  pthread_mutex_unlock(&ems_list_mutex);
   return 0;
 }
 
 int ems_wait(unsigned int delay_ms)
 {
-  pthread_mutex_lock(&cebolinho);
+  pthread_mutex_lock(&ems_wait_mutex);
   struct timespec delay = delay_to_timespec(delay_ms);
   nanosleep(&delay, NULL);
-  pthread_mutex_unlock(&cebolinho);
+  pthread_mutex_unlock(&ems_wait_mutex);
   return 0;
 }
 

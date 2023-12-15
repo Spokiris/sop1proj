@@ -3,14 +3,14 @@
 
 #include <pthread.h>    
 
-extern pthread_mutex_t cebola; // Mutex lock
-extern pthread_mutex_t tomate;
-extern pthread_mutex_t alface;
-extern pthread_mutex_t rucula;
-extern pthread_mutex_t broculos;
-extern pthread_mutex_t couve;
-extern pthread_mutex_t espinafre;
-extern pthread_mutex_t cebolinho;
+extern pthread_mutex_t get_event_with_delay_mutex; // Mutex lock
+extern pthread_mutex_t get_seat_with_delay_mutex; // Mutex lock
+extern pthread_mutex_t seat_index_mutex; // Mutex lock
+extern pthread_mutex_t ems_create_mutex; // Mutex lock
+extern pthread_mutex_t ems_reserve_mutex; // Mutex lock
+extern pthread_mutex_t ems_show_mutex; // Mutex lock
+extern pthread_mutex_t ems_list_mutex; // Mutex lock
+extern pthread_mutex_t ems_wait_mutex; // Mutex lock
 
 
 
