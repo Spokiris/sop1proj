@@ -24,13 +24,128 @@
 
 #include <sys/wait.h>
 
+#include <pthread.h>
+
 #define PATH_MAX 4096
 #define DT_REG 8 // Directory entry is a regular file
 
+
+
+
+void run_ems(int fdin, int fdout, unsigned int event_id, size_t num_rows, size_t num_columns, size_t num_coords, size_t xs[MAX_RESERVATION_SIZE], size_t ys[MAX_RESERVATION_SIZE], unsigned int delay) 
+{
+  int cmd; // Command number
+  
+  while ((cmd = get_next(fdin)) != EOC)
+  {
+
+    switch (cmd)
+    {
+
+    case CMD_CREATE:
+      if (parse_create(fdin, &event_id, &num_rows, &num_columns) !=
+          0)
+      {
+        fprintf(stderr, "Invalid command. See HELP for usage\n");
+        continue;
+      }
+
+      if (ems_create(event_id, num_rows, num_columns))
+      {
+        fprintf(stderr, "Failed to create event\n");
+      }
+
+      break;
+
+    case CMD_RESERVE:
+      num_coords = parse_reserve(fdin, MAX_RESERVATION_SIZE,
+                                  &event_id, xs, ys);
+
+      if (num_coords == 0)
+      {
+        fprintf(stderr, "Invalid command. See HELP for usage\n");
+        continue;
+      }
+
+      if (ems_reserve(event_id, num_coords, xs, ys))
+      {
+        fprintf(stderr, "Failed to reserve seats\n");
+      }
+
+      break;
+
+    /* FILESYS CMD_SHOW */
+    case CMD_SHOW:
+      if (parse_show(fdin, &event_id) != 0)
+      { // Parse the command
+        fprintf(stderr, "Invalid command. See HELP for usage\n");
+        continue;
+      }
+
+      if (ems_show(event_id, fdout))
+      { // EMS_Show printed to standard output
+        fprintf(stderr, "Failed to show event\n");
+      }
+
+      break;
+
+    case CMD_LIST_EVENTS:
+      if (ems_list_events(fdout))
+      {
+        fprintf(stderr, "Failed to list events\n");
+      }
+
+      break;
+
+    case CMD_WAIT:
+      if (parse_wait(fdin, &delay, NULL) ==
+          -1)
+      { // thread_id is not implemented
+        fprintf(stderr, "Invalid command. See HELP for usage\n");
+        continue;
+      }
+
+      if (delay > 0)
+      {
+        printf("Waiting...\n");
+        ems_wait(delay);
+      }
+
+      break;
+
+    case CMD_INVALID:
+      fprintf(stderr, "Invalid command. See HELP for usage\n");
+      break;
+
+    case CMD_HELP:
+      printf("Available commands:\n"
+              "  CREATE <event_id> <num_rows> <num_columns>\n"
+              "  RESERVE <event_id> [(<x1>,<y1>) (<x2>,<y2>) ...]\n"
+              "  SHOW <event_id>\n"
+              "  LIST\n"
+              "  WAIT <delay_ms> [thread_id]\n" // thread_id is not
+                                                // implemented
+              "  BARRIER\n"                     // Not implemented
+              "  HELP\n");
+
+      break;
+
+    case CMD_BARRIER: // Not implemented
+    
+    case CMD_EMPTY:
+      break;
+
+    case EOC:
+      ems_terminate();
+    }
+  }
+}
+
+
 int main(int argc, char *argv[])
 {
-  int fdin = 0;  // default to stdin -> to be used in FILESYS CMD_SHOW
-  int fdout = 0; // default to stdout -> to be used in FILESYS CMD_SHOW
+  int fdin = 0;  // default to stdin -> to be used in FILESYS CMD_SHOW && CMD_LIST_EVENTS
+  int fdout = 0; // default to stdout -> to be used in FILESYS CMD_SHOW && CMD_LIST_EVENTS
 
   unsigned int state_access_delay_ms = STATE_ACCESS_DELAY_MS; // Default delay value
 
@@ -44,6 +159,9 @@ int main(int argc, char *argv[])
   pid_t wpid;       // Wait Process ID
   int status;       // Process status
   int files = 0;
+
+  // pthread_mutex_t lock; // Mutex lock
+  
 
   /* First argument is a FilePath */
   if (argc > 1)
@@ -113,7 +231,8 @@ int main(int argc, char *argv[])
       /* Read files in directory */
       while ((entry = readdir(dir)) != NULL)
       {
-
+        printf("%s\n", entry->d_name);
+        
         if (entry->d_type == DT_REG)
         {
 
@@ -124,7 +243,7 @@ int main(int argc, char *argv[])
 
             char input_path[PATH_MAX];  // Input file path
             char output_path[PATH_MAX]; // Output file path
-
+            // input file descriptor
             snprintf(input_path, PATH_MAX, "%s/%s", directory_path,
                      filename); // Create input file path
 
@@ -135,6 +254,27 @@ int main(int argc, char *argv[])
               perror("Failed to open file\n");
               return 1;
             }
+            // input file descriptor
+            
+            // output file descriptor
+            char *dot = strrchr(filename, '.'); // Find the last dot in the filename
+            if (dot != NULL)
+            {
+              *dot = '\0'; // Terminate the string at the dot
+            }
+
+            snprintf(output_path, PATH_MAX, "%s/%s.out", directory_path,
+                      filename); // Create output file path
+
+            fdout = open(output_path, O_WRONLY | O_CREAT | O_TRUNC,
+                          0666); // Open output file file descriptor
+
+            if (fdout == -1)
+            {
+              perror("Failed to open output file");
+              return 1;
+            }
+            // output file descriptor
 
             /*PID INIT*/
             active_proc++; // Increase the number of active processes
@@ -146,162 +286,12 @@ int main(int argc, char *argv[])
             if (pid == 0)
             { // Check if the process is a child
 
-              int cmd; // Command number
+              run_ems(fdin, fdout, event_id, num_rows, num_columns, num_coords, xs, ys, delay);
 
-              /* Loop to keep reading the file until the end */
-              while ((cmd = get_next(fdin)) != EOC)
-              {
-
-                switch (cmd)
-                {
-
-                case CMD_CREATE:
-                  if (parse_create(fdin, &event_id, &num_rows, &num_columns) !=
-                      0)
-                  {
-                    fprintf(stderr, "Invalid command. See HELP for usage\n");
-                    continue;
-                  }
-
-                  if (ems_create(event_id, num_rows, num_columns))
-                  {
-                    fprintf(stderr, "Failed to create event\n");
-                  }
-
-                  break;
-
-                case CMD_RESERVE:
-                  num_coords = parse_reserve(fdin, MAX_RESERVATION_SIZE,
-                                             &event_id, xs, ys);
-
-                  if (num_coords == 0)
-                  {
-                    fprintf(stderr, "Invalid command. See HELP for usage\n");
-                    continue;
-                  }
-
-                  if (ems_reserve(event_id, num_coords, xs, ys))
-                  {
-                    fprintf(stderr, "Failed to reserve seats\n");
-                  }
-
-                  break;
-
-                /* FILESYS CMD_SHOW */
-                case CMD_SHOW:
-                  if (parse_show(fdin, &event_id) != 0)
-                  { // Parse the command
-                    fprintf(stderr, "Invalid command. See HELP for usage\n");
-                    continue;
-                  }
-
-                  char *dot = strrchr(filename, '.'); // Find the last dot in the filename
-                  if (dot != NULL)
-                  {
-                    *dot = '\0'; // Terminate the string at the dot
-                  }
-
-                  snprintf(output_path, PATH_MAX, "%s/%s.out", directory_path,
-                           filename); // Create output file path
-
-                  fdout = open(output_path, O_WRONLY | O_CREAT | O_TRUNC,
-                               0666); // Open output file file descriptor
-
-                  if (fdout == -1)
-                  {
-                    perror("Failed to open output file");
-                    return 1;
-                  }
-
-                  int stdout_save = dup(fileno(stdout)); // Save standard output file descriptor and duplicate it
-
-                  if (stdout_save == -1)
-                  {
-                    perror("Failed to duplicate stdout");
-                    return 1;
-                  }
-
-                  if (dup2(fdout, fileno(stdout)) == -1)
-                  { // Redirect standard output to fdout
-                    perror("Failed to redirect stdout");
-                    return 1;
-                  }
-
-                  if (ems_show(event_id))
-                  { // EMS_Show printed to standard output
-                    fprintf(stderr, "Failed to show event\n");
-                  }
-
-                  fflush(stdout); // Flush standard output
-
-                  if (dup2(stdout_save, fileno(stdout)) ==
-                      -1)
-                  { // Restore standard output file descriptor to its
-                    // original value
-                    perror("Failed to restore stdout");
-                    return 1;
-                  }
-
-                  int sync = fsync(fdout); // Force File Sync to output file
-                  if (sync == -1)
-                  { // Force File Sync to output file
-                    perror("Failed to fsync");
-                    return 1;
-                  }
-
-                  close(
-                      stdout_save); // Close saved standard output file descriptor
-                  close(fdout);     // Close output file descriptor
-                  break;
-
-                case CMD_WAIT:
-                  if (parse_wait(fdin, &delay, NULL) ==
-                      -1)
-                  { // thread_id is not implemented
-                    fprintf(stderr, "Invalid command. See HELP for usage\n");
-                    continue;
-                  }
-
-                  if (delay > 0)
-                  {
-                    printf("Waiting...\n");
-                    ems_wait(delay);
-                  }
-
-                  break;
-
-                case CMD_INVALID:
-                  fprintf(stderr, "Invalid command. See HELP for usage\n");
-                  break;
-
-                case CMD_HELP:
-                  printf("Available commands:\n"
-                         "  CREATE <event_id> <num_rows> <num_columns>\n"
-                         "  RESERVE <event_id> [(<x1>,<y1>) (<x2>,<y2>) ...]\n"
-                         "  SHOW <event_id>\n"
-                         "  LIST\n"
-                         "  WAIT <delay_ms> [thread_id]\n" // thread_id is not
-                                                           // implemented
-                         "  BARRIER\n"                     // Not implemented
-                         "  HELP\n");
-
-                  break;
-
-                case CMD_BARRIER: // Not implemented
-                case CMD_EMPTY:
-                  break;
-
-                case EOC:
-                  ems_terminate();
-
-                  return 0;
-                }
-              }
-
-              close(fdin);   // Close input file descriptor
-              active_proc--; // Decrease the number of active processes
-              exit(status);       // Exit the child process
-              
+              close(fdin);      // Close input file descriptor
+              close(fdout);     // Close output file descriptor
+              active_proc--;    // Decrease the number of active processes
+              exit(status);     // Exit the child process
             }
 
             
@@ -337,7 +327,7 @@ int main(int argc, char *argv[])
         }
       }
 
-      while (active_proc > 0)
+      if (active_proc > 0)
       { // Wait for all child processes to finish CHECK POINT
         waitpid(0, &status, WNOHANG);
         active_proc--;
@@ -391,7 +381,7 @@ int main(int argc, char *argv[])
         continue;
       }
 
-      if (ems_show(event_id))
+      if (ems_show(event_id, STDOUT_FILENO))
       {
         fprintf(stderr, "Failed to show event\n");
       }
@@ -399,7 +389,7 @@ int main(int argc, char *argv[])
       break;
 
     case CMD_LIST_EVENTS:
-      if (ems_list_events())
+      if (ems_list_events(STDOUT_FILENO))
       {
         fprintf(stderr, "Failed to list events\n");
       }
