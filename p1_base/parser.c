@@ -160,6 +160,7 @@ enum Command get_next(int fd)
     return CMD_INVALID;
   }
   pthread_mutex_unlock(&lock);
+  return 0;
 }
 
 int parse_create(int fd, unsigned int *event_id, size_t *num_rows,
@@ -318,4 +319,5 @@ int parse_wait(int fd, unsigned int *delay, unsigned int *thread_id)
     return -1;
   }
   pthread_mutex_unlock(&lock);
+  return 0;
 }

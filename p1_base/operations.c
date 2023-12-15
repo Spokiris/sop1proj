@@ -294,7 +294,7 @@ static int barrier_holder = 0;
 
 void ems_barrier()
 {
-  pthead_mutex_lock(&barrier_mutex);
+  pthread_mutex_lock(&barrier_mutex);
   barrier_count++;
 
   if (barrier_count == barrier_holder)

@@ -34,16 +34,18 @@ typedef struct {
   int fdout;
 } thread_args;  
 
-void run_ems(void* args) 
+void* run_ems(void *args) 
 {
-    thread_args *t_args = malloc(sizeof(thread_args));
-    int fdin = t_args->fdin;
-    int fdout = t_args->fdout;
-    
-    unsigned int event_id, delay;
-    size_t num_rows, num_columns, num_coords;
-    size_t xs[MAX_RESERVATION_SIZE], ys[MAX_RESERVATION_SIZE];
+  (void)args;
+  thread_args *t_args = malloc(sizeof(thread_args));
+  int fdin = t_args->fdin;
+  int fdout = t_args->fdout;
   
+  unsigned int event_id, delay;
+  size_t num_rows, num_columns, num_coords;
+  size_t xs[MAX_RESERVATION_SIZE], ys[MAX_RESERVATION_SIZE];
+
+  pthread_mutex_t lock; // Mutex lock
   
   int cmd; // Command number
   
@@ -157,7 +159,7 @@ void run_ems(void* args)
   free(t_args);
   close(fdin);      // Close input file descriptor
   close(fdout);     // Close output file descriptor
-  return 0;
+  return NULL;
 }
 
 
@@ -187,7 +189,7 @@ int main(int argc, char *argv[])
   pid_t pid;        // Process ID
   pid_t wpid;       // Wait Process ID
   int status;       // Process status
-  int files = 0;
+  // int files = 0;
 
 
 
@@ -195,12 +197,6 @@ int main(int argc, char *argv[])
  
   int MAX_THREADS = 0;    // MAX number of simultaneos threads
   pthread_t threads[MAX_THREADS]; // Thread ID
-   
-   
-  pthread_mutex_t lock;  // Mutex lock
-
-
-
 
 
   /* First argument is a FilePath */
@@ -339,7 +335,7 @@ int main(int argc, char *argv[])
                 thread_args *args = malloc(sizeof(thread_args));
                 args->fdin = fdin;
                 args->fdout = fdout;
-                pthread_create(&threads[i], NULL, run_ems, args);
+                pthread_create(&threads[i], NULL, run_ems, &args);
               }
 
               for(int i = 0; i < MAX_THREADS; i++)
