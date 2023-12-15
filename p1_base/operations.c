@@ -281,12 +281,13 @@ int ems_list_events(int fd)
   return 0;
 }
 
-void ems_wait(unsigned int delay_ms)
+int ems_wait(unsigned int delay_ms)
 {
   pthread_mutex_lock(&cebolinho);
   struct timespec delay = delay_to_timespec(delay_ms);
   nanosleep(&delay, NULL);
   pthread_mutex_unlock(&cebolinho);
+  return 0;
 }
 
 
