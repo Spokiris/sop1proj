@@ -1,6 +1,9 @@
 #include "eventlist.h"
 
+#include <pthread.h>
 #include <stdlib.h>
+
+
 
 struct EventList *create_list()
 {

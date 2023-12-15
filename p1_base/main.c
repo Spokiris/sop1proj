@@ -26,40 +26,46 @@
 
 #include <pthread.h>
 
+#include "mutex_l.h"
+
 #define PATH_MAX 4096
 #define DT_REG 8 // Directory entry is a regular file
+
+pthread_mutex_t cebola = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct {
   int fdin;
   int fdout;
 } thread_args;  
 
+// pthread_mutex_t lock; // Mutex lock
+
 void* run_ems(void *args) 
 {
   (void)args;
-  thread_args *t_args = malloc(sizeof(thread_args));
+  thread_args *t_args = (thread_args*)args;
   int fdin = t_args->fdin;
+  
   int fdout = t_args->fdout;
+
   
   unsigned int event_id, delay;
   size_t num_rows, num_columns, num_coords;
   size_t xs[MAX_RESERVATION_SIZE], ys[MAX_RESERVATION_SIZE];
 
-  pthread_mutex_t lock; // Mutex lock
+   
   
-  int cmd; // Command number
-  
-  pthread_mutex_init(&lock, NULL);  // Initialize mutex lock
-  
+  int cmd; // Command number 
+ 
   while ((cmd = get_next(fdin)) != EOC)
   {
-
+    printf("cmd %d\n", cmd);  
     switch (cmd)
     {
 
     case CMD_CREATE:
-      if (parse_create(fdin, &event_id, &num_rows, &num_columns) !=
-          0)
+  ;
+      if (parse_create(fdin, &event_id, &num_rows, &num_columns))
       {
         fprintf(stderr, "Invalid command. See HELP for usage\n");
         continue;
@@ -75,7 +81,7 @@ void* run_ems(void *args)
     case CMD_RESERVE:
       num_coords = parse_reserve(fdin, MAX_RESERVATION_SIZE,
                                   &event_id, xs, ys);
-
+      
       if (num_coords == 0)
       {
         fprintf(stderr, "Invalid command. See HELP for usage\n");
@@ -91,13 +97,15 @@ void* run_ems(void *args)
 
     /* FILESYS CMD_SHOW */
     case CMD_SHOW:
+      printf("CMD_SHOW\n");
+    
       if (parse_show(fdin, &event_id) != 0)
       { // Parse the command
         fprintf(stderr, "Invalid command. See HELP for usage\n");
         continue;
       }
-
-      if (ems_show(event_id, fdout))
+      
+      if (ems_show(event_id, fdout) != 0)
       { // EMS_Show printed to standard output
         fprintf(stderr, "Failed to show event\n");
       }
@@ -156,7 +164,7 @@ void* run_ems(void *args)
       ems_terminate();
     }
   }
-  free(t_args);
+  free(args);
   close(fdin);      // Close input file descriptor
   close(fdout);     // Close output file descriptor
   return NULL;
@@ -227,7 +235,6 @@ int main(int argc, char *argv[])
   if (argc > 3)
   {
     MAX_THREADS = atoi(argv[3]); // Second argument is the MAX number of simultaneos processes
-    
     if (MAX_THREADS < 0)
     {
       perror("Invalid MAX number of threads\n");
@@ -265,6 +272,7 @@ int main(int argc, char *argv[])
     exit(1);
   }
 
+  pthread_mutex_init(&cebola, NULL);  // Initialize mutex lock
   /* Main loop */
   while (1)
   {
@@ -336,7 +344,7 @@ int main(int argc, char *argv[])
                 thread_args *args = malloc(sizeof(thread_args));
                 args->fdin = fdin;
                 args->fdout = fdout;
-                pthread_create(&threads[i], NULL, run_ems, &args);
+                pthread_create(&threads[i], NULL, run_ems, args);
               }
 
               for(int i = 0; i < MAX_THREADS; i++)

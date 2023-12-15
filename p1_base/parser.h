@@ -2,6 +2,7 @@
 #define EMS_PARSER_H
 
 #include <stddef.h>
+#include <pthread.h>
 
 enum Command
 {

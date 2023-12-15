@@ -6,11 +6,13 @@
 #include <pthread.h>
 
 #include "eventlist.h"
+#include "mutex_l.h"
 
 static struct EventList *event_list = NULL;
 static unsigned int state_access_delay_ms = 0;
 
-pthread_mutex_t lock;
+pthread_mutex_t op_lock;
+
 
 /// Calculates a timespec from a delay in milliseconds.
 /// @param delay_ms Delay in milliseconds.
@@ -27,11 +29,11 @@ static struct timespec delay_to_timespec(unsigned int delay_ms)
 /// @return Pointer to the event if found, NULL otherwise.
 static struct Event *get_event_with_delay(unsigned int event_id)
 {
-  pthread_mutex_lock(&lock);
+  pthread_mutex_lock(&op_lock);
   struct timespec delay = delay_to_timespec(state_access_delay_ms);
   nanosleep(&delay, NULL); // Should not be removed
   struct Event *event = get_event(event_list, event_id);
-  pthread_mutex_unlock(&lock);
+  pthread_mutex_unlock(&op_lock);
   return event;
 }
 
@@ -43,11 +45,11 @@ static struct Event *get_event_with_delay(unsigned int event_id)
 /// @return Pointer to the seat.
 static unsigned int *get_seat_with_delay(struct Event *event, size_t index)
 {
-  pthread_mutex_lock(&lock);
+  pthread_mutex_lock(&op_lock);
   struct timespec delay = delay_to_timespec(state_access_delay_ms);
   nanosleep(&delay, NULL); // Should not be removed
   unsigned int *seat = &event->data[index];
-  pthread_mutex_unlock(&lock);
+  pthread_mutex_unlock(&op_lock);
   return seat;
 }
 
@@ -59,15 +61,15 @@ static unsigned int *get_seat_with_delay(struct Event *event, size_t index)
 /// @return Index of the seat.
 static size_t seat_index(struct Event *event, size_t row, size_t col)
 {
-  pthread_mutex_lock(&lock);
+  pthread_mutex_lock(&op_lock);
   size_t index = (row - 1) * event->cols + col - 1;
-  pthread_mutex_unlock(&lock);
+  pthread_mutex_unlock(&op_lock);
   return index;
 }
 
 int ems_init(unsigned int delay_ms)
 {
-  pthread_mutex_lock(&lock);
+  
   if (event_list != NULL)
   {
     fprintf(stderr, "EMS state has already been initialized\n");
@@ -77,13 +79,13 @@ int ems_init(unsigned int delay_ms)
   event_list = create_list();
   state_access_delay_ms = delay_ms;
   int result = event_list == NULL;
-  pthread_mutex_unlock(&lock);
+  
   return result;
 }
 
 int ems_terminate()
 {
-  pthread_mutex_lock(&lock);
+  pthread_mutex_lock(&op_lock);
   if (event_list == NULL)
   {
     fprintf(stderr, "EMS state must be initialized\n");
@@ -91,14 +93,16 @@ int ems_terminate()
   }
 
   free_list(event_list);
-  pthread_mutex_unlock(&lock);
-  pthread_mutex_destroy(&lock);
+  pthread_mutex_unlock(&op_lock);
+  pthread_mutex_destroy(&op_lock);
   return 0;
 }
 
 int ems_create(unsigned int event_id, size_t num_rows, size_t num_cols)
 {
-  pthread_mutex_lock(&lock);
+  //printf("loCKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK\n");
+  
+  pthread_mutex_lock(&cebola);
   if (event_list == NULL)
   {
     fprintf(stderr, "EMS state must be initialized\n");
@@ -144,15 +148,19 @@ int ems_create(unsigned int event_id, size_t num_rows, size_t num_cols)
     free(event);
     return 1;
   }
-
-  pthread_mutex_unlock(&lock);
+  
+  pthread_mutex_unlock(&cebola);
+  //printf("unloCKKKKKKKKKKKKKKKKK");
+  
   return 0;
 }
 
 int ems_reserve(unsigned int event_id, size_t num_seats, size_t *xs,
                 size_t *ys)
 {
-  pthread_mutex_lock(&lock);
+  printf("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
+  pthread_mutex_lock(&cebola);
+  
   if (event_list == NULL)
   {
     fprintf(stderr, "EMS state must be initialized\n");
@@ -200,13 +208,13 @@ int ems_reserve(unsigned int event_id, size_t num_seats, size_t *xs,
     }
     return 1;
   }
-  pthread_mutex_unlock(&lock);
+  pthread_mutex_unlock(&cebola);
   return 0;
 }
 
 int ems_show(unsigned int event_id, int fd)
 {
-  pthread_mutex_lock(&lock);
+  pthread_mutex_lock(&cebola);
   char buffer[256];
   
   if (event_list == NULL)
@@ -222,7 +230,7 @@ int ems_show(unsigned int event_id, int fd)
   {
     strcpy(buffer, "Event not found\n");
     write(fd, buffer, strlen(buffer));
-    return 1;
+    return 2;
   }
 
   for (size_t i = 1; i <= event->rows; i++)
@@ -241,13 +249,13 @@ int ems_show(unsigned int event_id, int fd)
 
     write(fd, "\n", 1);
   }
-  pthread_mutex_unlock(&lock);
+  pthread_mutex_unlock(&cebola);
   return 0;
 }
 
 int ems_list_events(int fd)
 {
-  pthread_mutex_lock(&lock);
+  pthread_mutex_lock(&op_lock);
   char buffer[256];
   
   if (event_list == NULL)
@@ -272,16 +280,16 @@ int ems_list_events(int fd)
     write(fd, buffer, strlen(buffer));
     current = current->next;
   }
-  pthread_mutex_unlock(&lock);
+  pthread_mutex_unlock(&op_lock);
   return 0;
 }
 
 void ems_wait(unsigned int delay_ms)
 {
-  pthread_mutex_lock(&lock);
+  pthread_mutex_lock(&op_lock);
   struct timespec delay = delay_to_timespec(delay_ms);
   nanosleep(&delay, NULL);
-  pthread_mutex_unlock(&lock);
+  pthread_mutex_unlock(&op_lock);
 }
 
 
