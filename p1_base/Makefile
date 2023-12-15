@@ -28,3 +28,15 @@ clean:
 format:
 	@which clang-format >/dev/null 2>&1 || echo "Please install clang-format to run this command"
 	clang-format -i *.c *.h
+
+test: ems
+	@./ems ./jobs1 2 2
+	@for file in ./jobs/*.out; do \
+    	echo "Testing $$file..."; \
+    	diff -q "$$file" "$${file%.out}.result" > /dev/null; \
+    	 if [ $$? -eq 0 ]; then \
+        	  echo "\033[0;32mTest passed\033[0m"; \
+    	  else \
+        	 echo "\033[0;31mTest failed\033[0m"; \
+    	 fi; \
+	  done

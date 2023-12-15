@@ -4,11 +4,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include "constants.h"
 
+pthread_mutex_t lock;
+
 static int read_uint(int fd, unsigned int *value, char *next)
 {
+  pthread_mutex_lock(&lock);
   char buf[16];
 
   int i = 0;
@@ -40,11 +44,13 @@ static int read_uint(int fd, unsigned int *value, char *next)
 
   *value = (unsigned int)ul;
 
+  pthread_mutex_unlock(&lock);
   return 0;
 }
 
 static void cleanup(int fd)
 {
+  pthread_mutex_lock(&lock);
   char ch;
   while (read(fd, &ch, 1) == 1 && ch != '\n')
     ;
@@ -52,6 +58,7 @@ static void cleanup(int fd)
 
 enum Command get_next(int fd)
 {
+  pthread_mutex_lock(&lock);
   char buf[16];
   if (read(fd, buf, 1) != 1)
   {
@@ -152,11 +159,13 @@ enum Command get_next(int fd)
     cleanup(fd);
     return CMD_INVALID;
   }
+  pthread_mutex_unlock(&lock);
 }
 
 int parse_create(int fd, unsigned int *event_id, size_t *num_rows,
                  size_t *num_cols)
 {
+  pthread_mutex_lock(&lock);
   char ch;
 
   if (read_uint(fd, event_id, &ch) != 0 || ch != ' ')
@@ -181,12 +190,14 @@ int parse_create(int fd, unsigned int *event_id, size_t *num_rows,
   }
   *num_cols = (size_t)u_num_cols;
 
+  pthread_mutex_unlock(&lock);
   return 0;
 }
 
 size_t parse_reserve(int fd, size_t max, unsigned int *event_id, size_t *xs,
                      size_t *ys)
 {
+  pthread_mutex_lock(&lock);
   char ch;
 
   if (read_uint(fd, event_id, &ch) != 0 || ch != ' ')
@@ -252,11 +263,13 @@ size_t parse_reserve(int fd, size_t max, unsigned int *event_id, size_t *xs,
     return 0;
   }
 
+  pthread_mutex_unlock(&lock);
   return num_coords;
 }
 
 int parse_show(int fd, unsigned int *event_id)
 {
+  pthread_mutex_lock(&lock);
   char ch;
 
   if (read_uint(fd, event_id, &ch) != 0 || (ch != '\n' && ch != '\0'))
@@ -264,12 +277,13 @@ int parse_show(int fd, unsigned int *event_id)
     cleanup(fd);
     return 1;
   }
-
+  pthread_mutex_unlock(&lock);
   return 0;
 }
 
 int parse_wait(int fd, unsigned int *delay, unsigned int *thread_id)
 {
+  pthread_mutex_lock(&lock);
   char ch;
 
   if (read_uint(fd, delay, &ch) != 0)
@@ -303,4 +317,5 @@ int parse_wait(int fd, unsigned int *delay, unsigned int *thread_id)
     cleanup(fd);
     return -1;
   }
+  pthread_mutex_unlock(&lock);
 }

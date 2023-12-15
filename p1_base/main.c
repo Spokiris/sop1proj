@@ -29,12 +29,25 @@
 #define PATH_MAX 4096
 #define DT_REG 8 // Directory entry is a regular file
 
+typedef struct {
+  int fdin;
+  int fdout;
+} thread_args;  
 
-
-
-void run_ems(int fdin, int fdout, unsigned int event_id, size_t num_rows, size_t num_columns, size_t num_coords, size_t xs[MAX_RESERVATION_SIZE], size_t ys[MAX_RESERVATION_SIZE], unsigned int delay) 
+void run_ems(void* args) 
 {
+    thread_args *t_args = malloc(sizeof(thread_args));
+    int fdin = t_args->fdin;
+    int fdout = t_args->fdout;
+    
+    unsigned int event_id, delay;
+    size_t num_rows, num_columns, num_coords;
+    size_t xs[MAX_RESERVATION_SIZE], ys[MAX_RESERVATION_SIZE];
+  
+  
   int cmd; // Command number
+  
+  pthread_mutex_init(&lock, NULL);  // Initialize mutex lock
   
   while ((cmd = get_next(fdin)) != EOC)
   {
@@ -130,8 +143,10 @@ void run_ems(int fdin, int fdout, unsigned int event_id, size_t num_rows, size_t
 
       break;
 
-    case CMD_BARRIER: // Not implemented
-    
+    case CMD_BARRIER: //  implemented
+        ems_barrier();
+        break;
+
     case CMD_EMPTY:
       break;
 
@@ -139,19 +154,33 @@ void run_ems(int fdin, int fdout, unsigned int event_id, size_t num_rows, size_t
       ems_terminate();
     }
   }
+  free(t_args);
+  close(fdin);      // Close input file descriptor
+  close(fdout);     // Close output file descriptor
+  return 0;
 }
 
 
 int main(int argc, char *argv[])
 {
+
+
   int fdin = 0;  // default to stdin -> to be used in FILESYS CMD_SHOW && CMD_LIST_EVENTS
   int fdout = 0; // default to stdout -> to be used in FILESYS CMD_SHOW && CMD_LIST_EVENTS
 
+
+
+
   unsigned int state_access_delay_ms = STATE_ACCESS_DELAY_MS; // Default delay value
+
+
 
   DIR *dir;                   // Directory stream
   struct dirent *entry;       // Directory entry
   const char *directory_path; // Directory path
+
+
+
 
   int MAX_PROC = 0; // MAX number of simultaneos processes
   int active_proc;  // Number of active processes
@@ -160,8 +189,19 @@ int main(int argc, char *argv[])
   int status;       // Process status
   int files = 0;
 
-  // pthread_mutex_t lock; // Mutex lock
-  
+
+
+
+ 
+  int MAX_THREADS = 0;    // MAX number of simultaneos threads
+  pthread_t threads[MAX_THREADS]; // Thread ID
+   
+   
+  pthread_mutex_t lock;  // Mutex lock
+
+
+
+
 
   /* First argument is a FilePath */
   if (argc > 1)
@@ -172,7 +212,7 @@ int main(int argc, char *argv[])
     if (dir == NULL)
     {
       perror("Invalid directory\n");
-      return 1;
+      exit(1);
     }
   }
 
@@ -185,11 +225,23 @@ int main(int argc, char *argv[])
     if (MAX_PROC < 0)
     {
       perror("Invalid MAX number of simultaneos processes\n");
+      exit(1);
+    }
+  }
+
+  if (argc > 3)
+  {
+    MAX_THREADS = atoi(argv[3]); // Second argument is the MAX number of simultaneos processes
+    
+    if (MAX_THREADS < 0)
+    {
+      perror("Invalid MAX number of threads\n");
+      exit(1);
     }
   }
 
   /* Third argument is the Delay */
-  if (argc > 3)
+  if (argc > 4)
   {
     char *endptr; // Pointer to the end of the string
     unsigned long int delay = strtoul(argv[3], &endptr, 10);
@@ -197,7 +249,7 @@ int main(int argc, char *argv[])
     if (*endptr != '\0' || delay > UINT_MAX)
     {
       fprintf(stderr, "Invalid delay value or value too large\n");
-      return 1;
+      exit(1);
     }
 
     state_access_delay_ms =
@@ -205,26 +257,22 @@ int main(int argc, char *argv[])
   }
 
   /* Warning to abusive usage */
-  if (argc > 4)
+  if (argc > 5)
   {
     fprintf(stderr, "Usage: %s <directory_path> <MAX_PROC> <delay>\n", argv[0]);
-    return 1;
+    exit(1);
   }
 
   /* Initialize EMS */
   if (ems_init(state_access_delay_ms))
   {
     fprintf(stderr, "Failed to initialize EMS\n");
-    return 1;
+    exit(1);
   }
 
   /* Main loop */
   while (1)
   {
-    unsigned int event_id, delay;
-    size_t num_rows, num_columns, num_coords;
-    size_t xs[MAX_RESERVATION_SIZE], ys[MAX_RESERVATION_SIZE];
-
     /* File loop only available w/args */
     if (argc > 1)
     {
@@ -244,7 +292,7 @@ int main(int argc, char *argv[])
             char input_path[PATH_MAX];  // Input file path
             char output_path[PATH_MAX]; // Output file path
             // input file descriptor
-            snprintf(input_path, PATH_MAX, "%s/%s", directory_path,
+            snprintf (input_path, PATH_MAX, "%s/%s", directory_path,
                      filename); // Create input file path
 
             fdin = open(input_path, O_RDONLY); // Open input file descriptor
@@ -278,18 +326,26 @@ int main(int argc, char *argv[])
 
             /*PID INIT*/
             active_proc++; // Increase the number of active processes
-            files += 1;
-            printf("%d",files);
+            //files += 1;
+            //printf("%d",files);
             pid = fork();  // Create a new process
 
             /*PID CHECK*/
             if (pid == 0)
             { // Check if the process is a child
 
-              run_ems(fdin, fdout, event_id, num_rows, num_columns, num_coords, xs, ys, delay);
+              for(int i = 0; i < MAX_THREADS; i++)
+              {
+                thread_args *args = malloc(sizeof(thread_args));
+                args->fdin = fdin;
+                args->fdout = fdout;
+                pthread_create(&threads[i], NULL, run_ems, args);
+              }
 
-              close(fdin);      // Close input file descriptor
-              close(fdout);     // Close output file descriptor
+              for(int i = 0; i < MAX_THREADS; i++)
+              {
+                pthread_join(threads[i], NULL);
+              } 
               active_proc--;    // Decrease the number of active processes
               exit(status);     // Exit the child process
             }
@@ -299,7 +355,7 @@ int main(int argc, char *argv[])
             { // Check if the process is a parent
               if (active_proc == MAX_PROC)
               {                                  // Check if the MAX number of simultaneos processes was reached
-                wpid = waitpid(pid, &status, WNOHANG);   // Wait for the child process to finish
+                wpid = waitpid(-1, &status, WNOHANG);   // Wait for any child process to finish
                 active_proc--;                   // Decrease the number of active processes
               }
 
@@ -313,6 +369,11 @@ int main(int argc, char *argv[])
 
                 printf("Child process %d was terminated by signal %d\n", wpid, WTERMSIG(status));
               }
+               while (active_proc > 0)
+                    { // Wait for all child processes to finish CHECK POINT
+                      waitpid(0, &status, WNOHANG);
+                      active_proc--;
+                    }
             }
             else if (wpid == -1)
             {
@@ -327,114 +388,10 @@ int main(int argc, char *argv[])
         }
       }
 
-      if (active_proc > 0)
-      { // Wait for all child processes to finish CHECK POINT
-        waitpid(0, &status, WNOHANG);
-        active_proc--;
-      }
+      
 
       closedir(dir); // Close directory stream
       return 0;      // Exit the program
-    }
-
-    /* Interactive terminal loop (maybe FIXME?) */
-    printf("> ");
-    fflush(stdout);
-
-    switch (get_next(STDIN_FILENO))
-    {
-    case CMD_CREATE:
-      if (parse_create(STDIN_FILENO, &event_id, &num_rows, &num_columns) != 0)
-      {
-        fprintf(stderr, "Invalid command. See HELP for usage\n");
-        continue;
-      }
-
-      if (ems_create(event_id, num_rows, num_columns))
-      {
-        fprintf(stderr, "Failed to create event\n");
-      }
-
-      break;
-
-    case CMD_RESERVE:
-      num_coords =
-          parse_reserve(STDIN_FILENO, MAX_RESERVATION_SIZE, &event_id, xs, ys);
-
-      if (num_coords == 0)
-      {
-        fprintf(stderr, "Invalid command. See HELP for usage\n");
-        continue;
-      }
-
-      if (ems_reserve(event_id, num_coords, xs, ys))
-      {
-        fprintf(stderr, "Failed to reserve seats\n");
-      }
-
-      break;
-
-    case CMD_SHOW:
-      if (parse_show(STDIN_FILENO, &event_id) != 0)
-      {
-        fprintf(stderr, "Invalid command. See HELP for usage\n");
-        continue;
-      }
-
-      if (ems_show(event_id, STDOUT_FILENO))
-      {
-        fprintf(stderr, "Failed to show event\n");
-      }
-
-      break;
-
-    case CMD_LIST_EVENTS:
-      if (ems_list_events(STDOUT_FILENO))
-      {
-        fprintf(stderr, "Failed to list events\n");
-      }
-
-      break;
-
-    case CMD_WAIT:
-      if (parse_wait(STDIN_FILENO, &delay, NULL) ==
-          -1)
-      { // thread_id is not implemented
-        fprintf(stderr, "Invalid command. See HELP for usage\n");
-        continue;
-      }
-
-      if (delay > 0)
-      {
-        printf("Waiting...\n");
-        ems_wait(delay);
-      }
-
-      break;
-
-    case CMD_INVALID:
-      fprintf(stderr, "Invalid command. See HELP for usage\n");
-      break;
-
-    case CMD_HELP:
-      printf("Available commands:\n"
-             "  CREATE <event_id> <num_rows> <num_columns>\n"
-             "  RESERVE <event_id> [(<x1>,<y1>) (<x2>,<y2>) ...]\n"
-             "  SHOW <event_id>\n"
-             "  LIST\n"
-             "  WAIT <delay_ms> [thread_id]\n" // thread_id is not implemented
-             "  BARRIER\n"                     // Not implemented
-             "  HELP\n");
-
-      break;
-
-    case CMD_BARRIER: // Not implemented
-    case CMD_EMPTY:
-      break;
-
-    case EOC:
-      ems_terminate();
-      return 0;
     }
   }
 }
