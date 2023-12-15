@@ -32,6 +32,13 @@
 #define DT_REG 8 // Directory entry is a regular file
 
 pthread_mutex_t cebola = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t tomate = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t alface = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t rucula = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t broculos = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t couve = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t espinafre = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t cebolinho = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct {
   int fdin;
@@ -336,7 +343,7 @@ int main(int argc, char *argv[])
             if (pid == 0)
             { // Check if the process is a child
 
-              pthread_t threads[MAX_THREADS]; // Thread ID
+              pthread_t threads[MAX_THREADS + 1]; // Thread ID
               
               for(int i = 0; i < MAX_THREADS; i++)
               {

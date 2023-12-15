@@ -241,6 +241,7 @@ int parse_show(int fd, unsigned int *event_id) {
 }
 
 int parse_wait(int fd, unsigned int *delay, unsigned int *thread_id) {
+  
   char ch;
 
   if (read_uint(fd, delay, &ch) != 0) {
