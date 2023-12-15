@@ -100,7 +100,6 @@ int ems_terminate()
 
 int ems_create(unsigned int event_id, size_t num_rows, size_t num_cols)
 {
-  //printf("loCKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK\n");
   
   pthread_mutex_lock(&cebola);
   if (event_list == NULL)
@@ -150,7 +149,6 @@ int ems_create(unsigned int event_id, size_t num_rows, size_t num_cols)
   }
   
   pthread_mutex_unlock(&cebola);
-  //printf("unloCKKKKKKKKKKKKKKKKK");
   
   return 0;
 }
@@ -158,7 +156,6 @@ int ems_create(unsigned int event_id, size_t num_rows, size_t num_cols)
 int ems_reserve(unsigned int event_id, size_t num_seats, size_t *xs,
                 size_t *ys)
 {
-  printf("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
   pthread_mutex_lock(&cebola);
   
   if (event_list == NULL)

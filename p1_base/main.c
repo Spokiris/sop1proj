@@ -97,7 +97,6 @@ void* run_ems(void *args)
 
     /* FILESYS CMD_SHOW */
     case CMD_SHOW:
-      printf("CMD_SHOW\n");
     
       if (parse_show(fdin, &event_id) != 0)
       { // Parse the command
