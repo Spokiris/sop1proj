@@ -144,7 +144,7 @@ enum Command get_next(int fd) {
 }
 
 int parse_create(int fd, unsigned int *event_id, size_t *num_rows, size_t *num_cols) {
-  pthread_mutex_lock(&cebola);
+  pthread_mutex_lock(&get_event_with_delay_mutex);
   char ch;
   if (read_uint(fd, event_id, &ch) != 0 || ch != ' ') {
     cleanup(fd);
@@ -164,12 +164,12 @@ int parse_create(int fd, unsigned int *event_id, size_t *num_rows, size_t *num_c
     return 1;
   }
   *num_cols = (size_t)u_num_cols;
-  pthread_mutex_unlock(&cebola);
+  pthread_mutex_unlock(&get_event_with_delay_mutex);
   return 0;
 }
 
 size_t parse_reserve(int fd, size_t max, unsigned int *event_id, size_t *xs, size_t *ys) {
-  pthread_mutex_lock(&cebola);
+  pthread_mutex_lock(&get_event_with_delay_mutex);
   char ch;
 
   if (read_uint(fd, event_id, &ch) != 0 || ch != ' ') {
@@ -224,19 +224,19 @@ size_t parse_reserve(int fd, size_t max, unsigned int *event_id, size_t *xs, siz
     cleanup(fd);
     return 0;
   }
-  pthread_mutex_unlock(&cebola);
+  pthread_mutex_unlock(&get_event_with_delay_mutex);
   return num_coords;
 }
 
 int parse_show(int fd, unsigned int *event_id) {
-  pthread_mutex_lock(&cebola);
+  pthread_mutex_lock(&get_event_with_delay_mutex);
   char ch;
 
   if (read_uint(fd, event_id, &ch) != 0 || (ch != '\n' && ch != '\0')) {
     cleanup(fd);
     return 1;
   }
-  pthread_mutex_unlock(&cebola);
+  pthread_mutex_unlock(&get_event_with_delay_mutex);
   return 0;
 }
 
